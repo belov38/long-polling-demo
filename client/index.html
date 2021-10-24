@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<div id="app">
+    <input v-model="newMsg"/>
+    <button @click="sendMessage">SEND</button>
+    <div
+        v-for="m in messages"
+        style="outline: 1px solid black;">
+        {{ m }}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      newMsg: '',
+      messages: []
+    },
+    mounted() {
+      this.messages.push('no messages yet');
+      this.subscribe();
+    },
+    methods: {
+      async sendMessage() {
+        const body = JSON.stringify({message: this.newMsg})
+        let response = await fetch('http://localhost:3000/newmsg', {
+          method: 'POST', body, headers: {
+            'Content-Type': 'application/json'
+          },
+        });
+        this.newMsg = '';
+      },
+      async subscribe() {
+        console.log('subscribed');
+        let response = await fetch('http://localhost:3000/msg');
+        if (response.status == 502) {
+          console.log('Timeout. Re-subscribing')
+          await this.subscribe();
+        } else if (response.status != 200) {
+          console.log('Another error. Waiting 1s and re-subscribing')
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await this.subscribe();
+        } else {
+          console.log('Got a message!')
+          let message = await response.text();
+          this.messages.push(message);
+          await this.subscribe();
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>
